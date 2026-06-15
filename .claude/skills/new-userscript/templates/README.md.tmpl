@@ -1,0 +1,40 @@
+# {{NAME}}
+
+{{DESCRIPTION}}
+
+## Install
+
+**[Click here to install](https://raw.githubusercontent.com/hughescr/userscripts/main/{{SLUG}}/{{SLUG}}.user.js)**
+
+(Requires a userscript manager — Tampermonkey or the Userscripts Safari
+extension. See the [repo README](../README.md#installing-a-userscript) for setup
+and auto-update details.)
+
+## Screenshot
+
+<!-- TODO (optional): add a screenshot.png to this folder and uncomment the line below. -->
+<!-- ![screenshot](./screenshot.png) -->
+_Screenshot coming soon._
+
+## How it works
+
+<!-- TODO: describe what the script does and how. -->
+{{NAME}} targets a dynamic React / SPA site, so content renders and re-renders
+client-side. The script:
+
+- Watches the page with a **`MutationObserver`** and re-applies its changes as
+  new content appears (including after client-side navigation and re-renders).
+- Locates its target elements via **stable attributes** (e.g. `data-testid`,
+  `aria-*`, `role`) rather than framework-generated class names.
+- Is **idempotent and self-healing**: each handled element is tagged so it's
+  never processed twice, and the observer re-applies the change if the framework
+  drops it.
+
+## Caveats
+
+- **Site DOM coupling.** The script keys off the target site's DOM structure.
+  Sites change their markup over time, which may break this script until it's
+  updated. It deliberately avoids unstable atomic CSS class names.
+- **Safari userscript managers.** Works under both **Tampermonkey** and the free
+  **Userscripts** Safari extension. The two have slightly different
+  install/permission UIs — make sure the script is enabled for the target site.

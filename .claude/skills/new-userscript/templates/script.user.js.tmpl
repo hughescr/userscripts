@@ -1,0 +1,153 @@
+// ==UserScript==
+// @name         {{NAME}}
+// @namespace    https://github.com/hughescr/userscripts
+// @version      1.0.0
+// @description  {{DESCRIPTION}}
+// @author       Craig R. Hughes
+{{MATCH_BLOCK}}
+// @run-at       document-idle
+// @noframes
+// @homepageURL  https://github.com/hughescr/userscripts/tree/main/{{SLUG}}
+// @supportURL   https://github.com/hughescr/userscripts/issues
+// @downloadURL  https://raw.githubusercontent.com/hughescr/userscripts/main/{{SLUG}}/{{SLUG}}.user.js
+// @updateURL    https://raw.githubusercontent.com/hughescr/userscripts/main/{{SLUG}}/{{SLUG}}.user.js
+// @grant        none
+// @license      Apache-2.0
+// ==/UserScript==
+
+/*
+ * {{NAME}}
+ * ========
+ *
+ * {{DESCRIPTION}}
+ *
+ * This is a generic starter skeleton for a DOM userscript that targets a
+ * dynamic React / SPA site. SPAs render and re-render content client-side, so a
+ * one-shot script that runs at load is not enough: we have to watch the DOM and
+ * re-apply our changes as new content appears (and after the framework re-renders
+ * and potentially throws our changes away). The pattern below handles all of
+ * that for you — fill in the `process()` TODO and you're done.
+ *
+ * Design goals baked in:
+ *   - IDEMPOTENT: every element we touch is tagged with a data-attribute marker
+ *     so we never process the same node twice, even when the observer fires
+ *     repeatedly.
+ *   - SELF-HEALING: a MutationObserver re-runs processing on every DOM change,
+ *     so late renders and client-side navigation are handled automatically.
+ *   - THROTTLED: observer callbacks can fire in bursts; we coalesce them into a
+ *     single requestAnimationFrame-aligned pass so we don't do redundant work.
+ *   - FAILS SOFT: every selector is guarded and the work is wrapped in try/catch
+ *     so a site DOM change makes the script no-op rather than throw.
+ */
+
+(() => {
+    'use strict';
+
+    // -------------------------------------------------------------------------
+    // Constants
+    // -------------------------------------------------------------------------
+
+    // Data-attribute marker used to flag elements we've already handled, so the
+    // observer never double-processes a node. Keep it script-specific.
+    const PROCESSED_ATTR = 'data-{{SLUG}}-processed';
+
+    // -------------------------------------------------------------------------
+    // Throttled scheduler
+    // -------------------------------------------------------------------------
+    //
+    // The MutationObserver can fire many times in a single frame (e.g. a big
+    // React commit). We don't want to run process() once per mutation record —
+    // we want to run it at most once per animation frame. schedule() coalesces
+    // any number of calls within a frame into a single deferred run().
+
+    let scheduled = false;
+
+    function schedule() {
+        if (scheduled) {
+            return;
+        }
+        scheduled = true;
+        requestAnimationFrame(() => {
+            scheduled = false;
+            run();
+        });
+    }
+
+    function run() {
+        try {
+            process(document);
+        } catch (err) {
+            // Never let a DOM-shape change break the page. Log for debugging and
+            // carry on — the next mutation will trigger another attempt.
+            // eslint-disable-next-line no-console
+            console.error('[{{SLUG}}] process() failed:', err);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Core processing (THE PART YOU IMPLEMENT)
+    // -------------------------------------------------------------------------
+    //
+    // process() is called on initial load and after every (throttled) DOM
+    // mutation. It MUST be idempotent: it can run hundreds of times, so it must
+    // only act on elements it hasn't already handled.
+
+    function process(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return;
+        }
+
+        // TODO: Replace this selector with one that matches the target elements
+        // you want to augment. Prefer STABLE attributes (e.g. data-testid, aria-*,
+        // role, or semantic tags) over framework-generated class names, which are
+        // not stable across SPA builds.
+        const TARGET_SELECTOR = '/* TODO: your selector here */';
+
+        let targets;
+        try {
+            targets = root.querySelectorAll(TARGET_SELECTOR);
+        } catch (err) {
+            // An invalid/placeholder selector (or a removed feature) should no-op,
+            // not throw. Remove this guard once TARGET_SELECTOR is real.
+            return;
+        }
+
+        for (const el of targets) {
+            // Idempotency guard: skip anything we've already handled.
+            if (el.hasAttribute(PROCESSED_ATTR)) {
+                continue;
+            }
+            el.setAttribute(PROCESSED_ATTR, '');
+
+            // TODO: Do your work on `el` here — read data from it, inject UI next
+            // to it, attach event listeners, etc. Keep everything guarded so a
+            // missing child element doesn't throw. Example skeleton:
+            //
+            //   const anchor = el.querySelector('[data-testid="someStableThing"]');
+            //   if (!anchor) { continue; }
+            //   const btn = document.createElement('button');
+            //   btn.textContent = 'Do the thing';
+            //   btn.addEventListener('click', () => { /* ... */ });
+            //   anchor.before(btn);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Bootstrapping
+    // -------------------------------------------------------------------------
+    //
+    // 1. Watch the whole document for added/removed/changed nodes. subtree:true
+    //    catches deeply-nested SPA renders; childList:true catches inserts and
+    //    removals. Every change re-arms the throttled scheduler.
+    // 2. Run once immediately to handle whatever is already on the page at
+    //    document-idle.
+
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+    });
+
+    // Initial pass for content already rendered when the script runs.
+    schedule();
+})();
