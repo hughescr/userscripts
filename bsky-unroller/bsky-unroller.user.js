@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bluesky Thread Unroller
 // @namespace    https://github.com/hughescr/userscripts
-// @version      1.0.1
+// @version      1.0.2
 // @description  Adds an "Unroll thread" link to each bsky.app post, just left of Save, that opens the post on tbsky.app.
 // @author       Craig R. Hughes
 // @match        https://bsky.app/*
@@ -359,6 +359,26 @@
     // ---------------------------------------------------------------------------
 
     /**
+     * Read the live theme color from a native bookmark button's icon. bsky sets
+     * the Save <svg>'s color as an INLINE style (e.g. rgb(102,123,153) in light)
+     * and updates it on theme change, so its computed `color` is the source of
+     * truth for the current light/dim/dark icon color. Returns FALLBACK_THEME_COLOR
+     * if the button or its svg can't be read. Never throws.
+     */
+    function readThemeColor(bookmarkBtn) {
+        try {
+            const sibSvg = bookmarkBtn && bookmarkBtn.querySelector
+                ? bookmarkBtn.querySelector('svg')
+                : null;
+            return sibSvg
+                ? getComputedStyle(sibSvg).color
+                : FALLBACK_THEME_COLOR;
+        } catch (e) {
+            return FALLBACK_THEME_COLOR;
+        }
+    }
+
+    /**
      * Process a single native bookmark button: insert our link immediately
      * before it (joining the right-hand action group and inheriting its 8px gap),
      * unless our link is already present.
@@ -397,16 +417,16 @@
 
             // Read the theme color from the sibling bookmark icon at insert time
             // so our icon matches light/dim/dark, then bake it into our link's
-            // inline color. LIMITATION: this is a one-time snapshot. A re-heal
-            // re-reads it, but a re-heal only fires on a childList mutation. So a
-            // theme toggle recolors us ONLY if it re-renders the action bar
-            // (childList change); a pure CSS-variable/class swap on the existing
-            // nodes would NOT trigger us and our icon would keep the old color
-            // until the next action-bar re-render. Cosmetic, low impact.
-            const sibSvg = bookmarkBtn.querySelector('svg');
-            const themeColor = sibSvg
-                ? getComputedStyle(sibSvg).color
-                : FALLBACK_THEME_COLOR;
+            // inline color. This is an initial snapshot; two mechanisms keep it
+            // fresh thereafter: (1) a childList re-heal re-runs this whole path and
+            // re-reads the color, and (2) a dedicated theme observer (see
+            // installThemeObserver / recolorAllLinks) re-mirrors EVERY injected
+            // link the instant the user switches light/dim/dark -- even when bsky
+            // recolors the existing Save icon via inline styles WITHOUT recreating
+            // any nodes (which would never fire the childList re-heal). So the
+            // earlier "stale until next action-bar re-render" limitation no longer
+            // applies: a pure theme swap now recolors us immediately.
+            const themeColor = readThemeColor(bookmarkBtn);
 
             const link = buildLink(themeColor);
 
@@ -520,6 +540,90 @@
     }
 
     // ---------------------------------------------------------------------------
+    // Theme observer -- keep our icon color in sync with light/dim/dark switches
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Re-mirror the live Save-icon color onto EVERY injected link. bsky updates
+     * the native Save <svg>'s inline color on a theme switch without necessarily
+     * re-rendering the action bar (so the childList re-heal would miss it); this
+     * re-reads each link's CURRENT sibling Save color and restamps it.
+     *
+     * For each link we locate its LIVE Save button: prefer nextElementSibling (we
+     * always insert immediately before Save), else fall back to a parent query.
+     * Everything is guarded; a link whose Save button/svg can't be found is simply
+     * skipped, and we never throw.
+     */
+    function recolorAllLinks() {
+        try {
+            const links = document.querySelectorAll('.' + BTN_CLASS);
+            for (const link of links) {
+                try {
+                    let btn = link.nextElementSibling;
+                    if (!(btn && btn.matches && btn.matches(BOOKMARK_SELECTOR))) {
+                        btn = link.parentElement
+                            ? link.parentElement.querySelector(BOOKMARK_SELECTOR)
+                            : null;
+                    }
+                    if (!btn) {
+                        continue;
+                    }
+                    const svg = btn.querySelector('svg');
+                    if (!svg) {
+                        continue;
+                    }
+                    const color = getComputedStyle(svg).color;
+                    link.style.setProperty('color', color);
+                } catch (e) {
+                    // Skip this one link; keep recoloring the rest.
+                }
+            }
+        } catch (e) {
+            // Never throw out of the theme observer.
+        }
+    }
+
+    // rAF-coalesced debounce mirroring scheduleScan(): collapse a burst of <html>
+    // class mutations into one recolor. Run on rAF so bsky's re-render has applied
+    // the new inline Save-icon colors BEFORE we read them (reading synchronously in
+    // the same tick could snapshot the OLD color).
+    let recolorScheduled = false;
+    function scheduleRecolor() {
+        if (recolorScheduled) {
+            return;
+        }
+        recolorScheduled = true;
+        requestAnimationFrame(() => {
+            recolorScheduled = false;
+            try {
+                recolorAllLinks();
+            } catch (e) {
+                // swallow -- the observer will fire again on the next class change
+            }
+        });
+    }
+
+    /**
+     * Watch <html> for class changes and recolor on each. bsky applies its theme
+     * as a class on document.documentElement (theme--light / theme--dark /
+     * theme--dim); we react to ANY class change rather than hardcoding those values,
+     * so this stays robust even if bsky renames its theme-- classes. Cheap: it fires
+     * only on <html> class mutations, not on the whole subtree.
+     */
+    function installThemeObserver() {
+        try {
+            const observer = new MutationObserver(scheduleRecolor);
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        } catch (e) {
+            // Without the theme observer our icons still recolor on the next
+            // childList re-heal; the page remains fully functional.
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Bootstrap
     // ---------------------------------------------------------------------------
 
@@ -556,6 +660,9 @@
             // Without an observer we still injected once on initial scan; the page
             // remains fully functional, just no late re-heal.
         }
+
+        // Keep our icon color in sync when the user switches light/dim/dark.
+        installThemeObserver();
     }
 
     // @run-at document-idle usually means the DOM is ready, but guard for both
