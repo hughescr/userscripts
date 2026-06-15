@@ -59,5 +59,9 @@ missing — do not guess):
 - The starter is intentionally generic (a throttled MutationObserver +
   idempotent `process()` for dynamic React/SPA sites). It no-ops safely until the
   `process()` TODO is filled in.
+- Template conventions (mirroring the flagship bsky-unroller): double-init guard
+  via `dataset` flag on `<html>`; readyState fallback before `init()`; self-healing
+  re-heal keyed on the injected node's CSS class (not the marker attribute alone);
+  optional `@icon` comment in the metadata block.
 - If the user later wants a `@version` bump or release, that is a normal git
   edit + merge, not this skill.

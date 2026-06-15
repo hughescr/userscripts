@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bluesky Thread Unroller
 // @namespace    https://github.com/hughescr/userscripts
-// @version      1.0.0
+// @version      1.0.1
 // @description  Adds an "Unroll thread" link to each bsky.app post, just left of Save, that opens the post on tbsky.app.
 // @author       Craig R. Hughes
 // @match        https://bsky.app/*
@@ -171,8 +171,8 @@
         // depend on feedItem-by-/postThreadItem-by- wrappers, because some views (notably
         // SEARCH RESULTS under #searchScreen, and certain embeds) render posts without
         // any such testid'd container. Climbing stops at the post's own card before it
-        // can reach sibling posts, and "nearest-preceding" selection guarantees we pick
-        // THIS post's link, never an earlier sibling's.
+        // can reach sibling posts, and FIRST-MATCH-IN-DOM-ORDER selection guarantees we
+        // pick THIS post's link, never an earlier sibling's.
         //
         // Verified live (2026-06-15): home feed + search results 253/253 resolved (P1);
         // a post thread 49/49 resolved (48 P1 + the FOCUSED post via P2), the focused
@@ -184,46 +184,56 @@
             // "preceding" also drops the NEXT post if we ever climb past our own card.
             const links = [];
             for (const a of node.querySelectorAll('a[href*="/post/"]')) {
-                if ((a.compareDocumentPosition(bookmarkBtn) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0) {
-                    links.push(a);
+                if ((a.compareDocumentPosition(bookmarkBtn) & Node.DOCUMENT_POSITION_FOLLOWING) === 0) {
+                    continue;
                 }
+                // Same-origin guard (defense-in-depth): so a non-bsky link that merely
+                // looks like /profile/.../post/... can't be picked. The security review
+                // confirmed the destination is already hardcoded to tbsky.app, so this
+                // is robustness, not a vuln. On a malformed href, skip the anchor.
+                try {
+                    if (new URL(a.href).origin !== location.origin) {
+                        continue;
+                    }
+                } catch (e) {
+                    continue;
+                }
+                links.push(a);
             }
 
             // P1 -- TIMESTAMP link: canonical (raw === canon(raw), i.e. no /reposted-by
-            // etc. sub-route) AND a non-null aria-label containing a digit (the localized
-            // date, e.g. "June 15, 2026 at 9:34 AM"). A quoted embed's link has a null
-            // aria-label, so it is skipped here. We keep the LAST match in DOM order
-            // (nearest-preceding) so we bind to THIS post's timestamp, not a sibling's.
-            let p1 = null;
+            // etc. sub-route) AND a non-null aria-label containing a Unicode decimal digit
+            // (any locale's numerals -- the localized date, e.g. "June 15, 2026 at 9:34 AM").
+            // A quoted embed's link has a null aria-label, so it is skipped here. We return
+            // the FIRST match in DOM order: a quoted-embed post is a SIBLING subtree, never
+            // an ancestor of the bookmark button, so at the first ancestor level that
+            // contains any qualifying link (the outer post's own card), the OUTER post's
+            // header timestamp always precedes any nested quoted-embed link in DOM order --
+            // so first-match deterministically selects the outer post, even if a quoted
+            // embed link ever gains a dated aria-label.
             for (const a of links) {
                 const raw = pathOf(a);
                 const c = canon(raw);
                 if (c && raw === c) {
                     const label = a.getAttribute('aria-label');
-                    if (label && /\d/.test(label)) {
-                        p1 = c;
+                    if (label && /\p{Nd}/u.test(label)) {
+                        return c;
                     }
                 }
-            }
-            if (p1) {
-                return p1;
             }
 
             // P2 -- FOCUSED thread post: it has NO timestamp link, only stat links
             // (/post/<rkey>/reposted-by | /quotes | /liked-by). canon() strips the
-            // suffix to recover the focused post's canonical path.
-            let p2 = null;
+            // suffix to recover the focused post's canonical path. First-match in DOM
+            // order (harmless here since all stat links share one rkey).
             for (const a of links) {
                 const raw = pathOf(a);
                 if (raw && /\/post\/[^/]+\/(reposted-by|quotes|liked-by)/.test(raw)) {
                     const c = canon(raw);
                     if (c) {
-                        p2 = c;
+                        return c;
                     }
                 }
-            }
-            if (p2) {
-                return p2;
             }
 
             node = node.parentElement;
@@ -407,7 +417,18 @@
             // NEVER blank a previously-good href, so on null we leave href as-is.
             function refreshHref() {
                 try {
-                    const path = canonicalPathFor(bookmarkBtn);
+                    // Re-anchor to a LIVE button: React may replace the bookmark node,
+                    // detaching our captured reference. If so, the live bookmark button
+                    // is our link's nextElementSibling (we always insert immediately
+                    // before it), so resolve from that instead of the stale node.
+                    let btn = bookmarkBtn;
+                    if (!btn.isConnected) {
+                        const sib = link.nextElementSibling;
+                        if (sib && sib.matches && sib.matches(BOOKMARK_SELECTOR)) {
+                            btn = sib;
+                        }
+                    }
+                    const path = canonicalPathFor(btn);
                     if (path) {
                         link.href = TBSKY_ORIGIN + path;
                     }
@@ -506,12 +527,14 @@
         // Double-init guard. @grant none shares the page's window, so we avoid a
         // window global (page-script collision risk) and use a dataset flag on
         // <html> instead. If init somehow runs twice (loader quirk), the second
-        // run no-ops -- preventing duplicate observers / double scans.
+        // run no-ops -- preventing duplicate observers / double scans. Uses a
+        // dedicated key (data-bsky-unroller-init) so it never collides with
+        // MARK_ATTR (data-bsky-unroller), the per-button breadcrumb.
         try {
-            if (document.documentElement.dataset.bskyUnroller) {
+            if (document.documentElement.dataset.bskyUnrollerInit) {
                 return;
             }
-            document.documentElement.dataset.bskyUnroller = '1';
+            document.documentElement.dataset.bskyUnrollerInit = '1';
         } catch (e) {
             // If we can't set the flag, proceed once anyway.
         }

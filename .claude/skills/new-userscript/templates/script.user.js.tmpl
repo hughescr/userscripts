@@ -13,6 +13,7 @@
 // @updateURL    https://raw.githubusercontent.com/hughescr/userscripts/main/{{SLUG}}/{{SLUG}}.user.js
 // @grant        none
 // @license      Apache-2.0
+// (Optional) @icon  https://example.com/favicon.png  ← uncomment and replace with your icon URL
 // ==/UserScript==
 
 /*
@@ -29,9 +30,13 @@
  * that for you — fill in the `process()` TODO and you're done.
  *
  * Design goals baked in:
- *   - IDEMPOTENT: every element we touch is tagged with a data-attribute marker
- *     so we never process the same node twice, even when the observer fires
- *     repeatedly.
+ *   - DOUBLE-INIT GUARD: a dataset flag on <html> prevents a second init() run
+ *     if the userscript loader injects the script more than once.
+ *   - IDEMPOTENT / SELF-HEALING: process() does NOT rely solely on a marker
+ *     attribute. It checks for the actual presence of the injected UI element
+ *     (via a marker CLASS on that node) and re-inserts it if a framework
+ *     re-render dropped it. This means MARK_ATTR is just a debugging breadcrumb,
+ *     not a correctness dependency.
  *   - SELF-HEALING: a MutationObserver re-runs processing on every DOM change,
  *     so late renders and client-side navigation are handled automatically.
  *   - THROTTLED: observer callbacks can fire in bursts; we coalesce them into a
@@ -47,9 +52,14 @@
     // Constants
     // -------------------------------------------------------------------------
 
-    // Data-attribute marker used to flag elements we've already handled, so the
-    // observer never double-processes a node. Keep it script-specific.
-    const PROCESSED_ATTR = 'data-{{SLUG}}-processed';
+    // Class applied to the UI element WE inject. Used as the presence sentinel
+    // for re-heal: if an injected node with this class is missing, re-insert it.
+    const INJECTED_CLASS = '{{SLUG}}-injected';
+
+    // Data-attribute marker set on the TARGET element once we've processed it.
+    // Informational only — never used as a query filter (that would defeat
+    // re-heal). The real guard is checking INJECTED_CLASS on the injected node.
+    const MARK_ATTR = 'data-{{SLUG}}-processed';
 
     // -------------------------------------------------------------------------
     // Throttled scheduler
@@ -89,8 +99,13 @@
     // -------------------------------------------------------------------------
     //
     // process() is called on initial load and after every (throttled) DOM
-    // mutation. It MUST be idempotent: it can run hundreds of times, so it must
-    // only act on elements it hasn't already handled.
+    // mutation. It MUST be idempotent AND self-healing:
+    //   - Do NOT filter targets by MARK_ATTR (that defeats re-heal: a target
+    //     the framework kept marked but whose injected sibling it dropped would
+    //     be skipped forever).
+    //   - Instead, check whether the injected node (keyed by INJECTED_CLASS) is
+    //     actually present in the DOM right now. If absent, re-insert it.
+    //   - MARK_ATTR is set on the target as a debugging breadcrumb only.
 
     function process(root) {
         if (!root || typeof root.querySelectorAll !== 'function') {
@@ -113,41 +128,88 @@
         }
 
         for (const el of targets) {
-            // Idempotency guard: skip anything we've already handled.
-            if (el.hasAttribute(PROCESSED_ATTR)) {
-                continue;
-            }
-            el.setAttribute(PROCESSED_ATTR, '');
+            try {
+                // Self-healing idempotency: check for the ACTUAL injected node,
+                // not just the marker attribute. React/SPA renders may drop our
+                // injected sibling while keeping the target element (and its
+                // marker attribute). Keying off the injected node's class means
+                // we detect and repair that case on the very next observer fire.
+                //
+                // O(1) fast path: check the immediate previous sibling first.
+                const prev = el.previousElementSibling;
+                if (prev && prev.classList && prev.classList.contains(INJECTED_CLASS)) {
+                    // Already present — nothing to do.
+                    el.setAttribute(MARK_ATTR, '1');
+                    continue;
+                }
+                // Fallback: scan the parent (handles rare sibling reorders).
+                const parent = el.parentElement;
+                if (parent && parent.querySelector(':scope > .' + INJECTED_CLASS)) {
+                    el.setAttribute(MARK_ATTR, '1');
+                    continue;
+                }
 
-            // TODO: Do your work on `el` here — read data from it, inject UI next
-            // to it, attach event listeners, etc. Keep everything guarded so a
-            // missing child element doesn't throw. Example skeleton:
-            //
-            //   const anchor = el.querySelector('[data-testid="someStableThing"]');
-            //   if (!anchor) { continue; }
-            //   const btn = document.createElement('button');
-            //   btn.textContent = 'Do the thing';
-            //   btn.addEventListener('click', () => { /* ... */ });
-            //   anchor.before(btn);
+                // TODO: Build and insert your UI element here. Tag it with
+                // INJECTED_CLASS so the presence check above finds it. Example:
+                //
+                //   const btn = document.createElement('button');
+                //   btn.className = INJECTED_CLASS;
+                //   btn.textContent = 'Do the thing';
+                //   btn.addEventListener('click', (ev) => {
+                //       ev.stopPropagation();
+                //       /* ... */
+                //   });
+                //   el.before(btn);
+                //   el.setAttribute(MARK_ATTR, '1');
+
+            } catch (e) {
+                // Never throw — the observer will retry on the next mutation.
+            }
         }
     }
 
     // -------------------------------------------------------------------------
     // Bootstrapping
     // -------------------------------------------------------------------------
-    //
-    // 1. Watch the whole document for added/removed/changed nodes. subtree:true
-    //    catches deeply-nested SPA renders; childList:true catches inserts and
-    //    removals. Every change re-arms the throttled scheduler.
-    // 2. Run once immediately to handle whatever is already on the page at
-    //    document-idle.
 
-    const observer = new MutationObserver(schedule);
-    observer.observe(document.documentElement, {
-        subtree: true,
-        childList: true,
-    });
+    function init() {
+        // Double-init guard. @grant none shares the page's window, so we avoid
+        // a window global (page-script collision risk) and use a dataset flag on
+        // <html> instead. If init somehow runs twice (loader quirk), the second
+        // run no-ops — preventing duplicate observers / double scans.
+        try {
+            if (document.documentElement.dataset['{{SLUG}}Init']) {
+                return;
+            }
+            document.documentElement.dataset['{{SLUG}}Init'] = '1';
+        } catch (e) {
+            // If we can't set the flag, proceed once anyway.
+        }
 
-    // Initial pass for content already rendered when the script runs.
-    schedule();
+        // 1. Watch the whole document for added/removed nodes. subtree:true
+        //    catches deeply-nested SPA renders; childList:true catches inserts
+        //    and removals. Every change re-arms the throttled scheduler.
+        // 2. Run once immediately to handle whatever is already on the page at
+        //    document-idle.
+        try {
+            const observer = new MutationObserver(schedule);
+            observer.observe(document.documentElement, {
+                subtree: true,
+                childList: true,
+            });
+        } catch (e) {
+            // Without an observer we still run once below; page stays functional,
+            // just no late re-heal.
+        }
+
+        schedule();
+    }
+
+    // @run-at document-idle usually means the DOM is ready, but guard for both
+    // loaders/timings to be safe.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+        init();
+    }
 })();

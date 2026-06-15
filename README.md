@@ -9,7 +9,7 @@ build step, no bundler, just vanilla JS.
 
 | Script | Description | Install |
 | --- | --- | --- |
-| [bsky-unroller](bsky-unroller/) | Adds an "Unroll thread" button to bsky.app posts that opens the post on tbsky.app. | [Install](https://raw.githubusercontent.com/hughescr/userscripts/main/bsky-unroller/bsky-unroller.user.js) |
+| [bsky-unroller](bsky-unroller/) | Adds an "Unroll thread" link to bsky.app posts that opens the post on tbsky.app. | [Install](https://raw.githubusercontent.com/hughescr/userscripts/main/bsky-unroller/bsky-unroller.user.js) |
 
 ## Installing a userscript
 
