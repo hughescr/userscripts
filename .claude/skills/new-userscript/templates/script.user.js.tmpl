@@ -14,6 +14,10 @@
 // @grant        none
 // @license      Apache-2.0
 // (Optional) @icon  https://example.com/favicon.png  ← uncomment and replace with your icon URL
+//   NOTE: A remote @icon URL may render broken in Safari's Tampermonkey dashboard — the
+//   dashboard fetches the icon cross-origin into a blob, which requires a CORS/ACAO header
+//   from the icon host. A self-contained data:image/png;base64,... (or data:image/svg+xml,...)
+//   URI avoids the fetch entirely and is the reliable choice.
 // ==/UserScript==
 
 /*
