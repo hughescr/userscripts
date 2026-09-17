@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Bluesky Thread Unroller
 // @namespace    https://github.com/hughescr/userscripts
-// @version      1.0.3
-// @description  Adds an "Unroll thread" link to each bsky.app post, just left of Save, that opens the post on tbsky.app.
+// @version      1.1.0
+// @description  Adds an "Unroll thread" link to bsky.app posts that are part of a thread, just left of Save, that opens the post on tbsky.app.
 // @author       Craig R. Hughes
 // @match        https://bsky.app/*
 // @icon         data:image/png;base64,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
@@ -20,11 +20,11 @@
  * Bluesky Thread Unroller
  * =======================
  *
- * Adds a small, theme-matched "Unroll thread" link immediately to the LEFT of
- * the native Save (bookmark) button on every bsky.app post. It is a REAL anchor
- * (<a href>) pointing at the same post on https://tbsky.app, which renders the
- * whole thread unrolled. Because it is a genuine link, the browser handles clicks
- * natively:
+ * Adds a small, theme-matched "Unroll thread" link immediately to the LEFT of the
+ * native Save (bookmark) button on bsky.app posts THAT ARE PART OF A THREAD. It is
+ * a REAL anchor (<a href>) pointing at the same post on https://tbsky.app, which
+ * renders the whole thread unrolled. Because it is a genuine link, the browser
+ * handles clicks natively:
  *   - Left-click       -> navigate to tbsky in the SAME tab.
  *   - Middle-click /
  *     Cmd-click        -> open tbsky in a new (background) tab.
@@ -32,6 +32,15 @@
  * We deliberately set NO `target` attribute, so the browser's default per-click
  * behavior is preserved. The href is (re)computed from the live DOM just before
  * each activation (pointerdown/mousedown/focus) so it always points at THIS post.
+ *
+ * WHICH POSTS GET THE LINK:
+ *   Only posts showing bsky's own thread-position pill -- the little "1/6" badge it
+ *   renders inline in the post text when the post is one of a multi-post self-thread.
+ *   That pill IS bsky's answer to "is there a thread here", so gating on it means we
+ *   never offer to unroll a standalone post, where tbsky would just show the one post
+ *   we are already looking at. See hasThreadPill() for the detection and the live-DOM
+ *   recon behind it. The gate is re-evaluated on every scan in BOTH directions, so a
+ *   post that gains a pill gains the button and one that loses its pill loses it.
  *
  * THE tbsky.app URL SCHEME (verified against a real post):
  *   tbsky.app's scheme is literally "prepend the letter 't' to any bsky.app URL".
@@ -82,6 +91,19 @@
 
     // Stable anchor: the native Save/bookmark button. Everything keys off this.
     const BOOKMARK_SELECTOR = '[data-testid="postBookmarkBtn"]';
+
+    // Known post-card containers. Used ONLY as an upper bound on the scope climb
+    // (see postScopeFor) -- never as a requirement, because some views (notably
+    // SEARCH RESULTS) render posts with no testid'd card at all.
+    const CARD_SELECTOR = '[data-testid^="feedItem-by-"],[data-testid^="postThreadItem-by-"]';
+
+    // The thread-position pill ("1/6") that bsky renders inline in a post that is
+    // part of a multi-post self-thread. Its VISIBLE text is the locale-independent
+    // part; see hasThreadPill for why we test both the text and the aria-label.
+    const PILL_TEXT_RE = /^\p{Nd}+\s*\/\s*\p{Nd}+$/u;
+
+    // Any run of decimal digits, used to count the numbers in the pill's aria-label.
+    const PILL_LABEL_DIGITS_RE = /\p{Nd}+/gu;
 
     // Fallback theme color (bsky light-theme bookmark icon = #667B99) used only if
     // we cannot read the sibling icon's computed color at insert time.
@@ -243,6 +265,110 @@
     }
 
     // ---------------------------------------------------------------------------
+    // Thread-pill detection -- "does this post actually have anything to unroll?"
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Find the largest region of the DOM that belongs to THIS post and no other.
+     *
+     * We climb from the bookmark button and keep climbing while the ancestor still
+     * contains EXACTLY ONE bookmark button: the moment an ancestor contains two, it
+     * has swallowed a neighbouring post, so the previous level is our boundary. That
+     * makes the scope CONTAINER-AGNOSTIC (same reasoning as canonicalPathFor): it
+     * works in feeds, thread views AND in search results, which render posts with no
+     * testid'd card at all. Where a known card container IS present we stop there
+     * rather than climbing into its wrapper -- a strictly tighter bound.
+     *
+     * Quoted embeds sit INSIDE this scope, which is safe: verified live 2026-09-17
+     * that bsky renders NO thread pill inside a quote embed (a post quoting a "1/2"
+     * threaded post shows zero pills), so an embed can never lend its host a pill.
+     *
+     * Returns null only if the button has no usable parent; callers then no-op.
+     */
+    function postScopeFor(bookmarkBtn) {
+        let scope = null;
+        let node = bookmarkBtn.parentElement;
+        while (node && node !== document.body) {
+            // Two bookmark buttons => we just climbed into a sibling post. Stop.
+            if (node.querySelectorAll(BOOKMARK_SELECTOR).length !== 1) {
+                break;
+            }
+            scope = node;
+            if (node.matches(CARD_SELECTOR)) {
+                break;
+            }
+            node = node.parentElement;
+        }
+        return scope;
+    }
+
+    /**
+     * True iff this post carries bsky's thread-position pill -- the little "1/6"
+     * badge it renders inline in the post text when the post is one of a multi-post
+     * self-thread. That pill is precisely bsky's own answer to "is there a thread
+     * here", so gating on it means we only offer Unroll where there IS something to
+     * unroll.
+     *
+     * LIVE-DOM RECON (2026-09-17). The pill is:
+     *   <span aria-label="Post 1 of 6" class="css-1jxf684">1/6</span>
+     * wrapped in a pill-shaped div. It carries NO data-testid, and its class names
+     * are bsky's unstable atomic ones, so we identify it structurally instead:
+     *
+     *   1. a leaf element (no element children) whose whole trimmed text is
+     *      "<digits>/<digits>", and
+     *   2. an aria-label containing at least TWO numbers.
+     *
+     * Why BOTH: the visible text alone would false-positive on a post whose entire
+     * text run is literally "1/2", and the aria-label alone is localized -- verified
+     * live that it renders "Post 1 of 2" (en), "Post 1 von 2" (de) and
+     * "2件中の1番目の投稿" (ja). The VISIBLE text stayed ASCII "1/2" in all three,
+     * and every localization still contains both numbers, so "text shape + a label
+     * with two numbers in it" is the locale-independent intersection. Plain post
+     * text never carries an aria-label, which is what kills the false positive.
+     * (\p{Nd} rather than [0-9] so a future localized numeral system still matches.)
+     *
+     * We also require the pill to PRECEDE the bookmark button in DOM order: the post
+     * text always renders above the action bar, so anything after the button is not
+     * this post's pill.
+     *
+     * Fails CLOSED: if bsky restructures the pill we stop offering the button rather
+     * than offering a broken one. Never throws.
+     */
+    function hasThreadPill(bookmarkBtn) {
+        try {
+            const scope = postScopeFor(bookmarkBtn);
+            if (!scope) {
+                return false;
+            }
+            for (const el of scope.querySelectorAll('[aria-label]')) {
+                // Leaf only: the pill's text is its own, not an aggregate of children.
+                if (el.children.length !== 0) {
+                    continue;
+                }
+                if ((el.compareDocumentPosition(bookmarkBtn) & Node.DOCUMENT_POSITION_FOLLOWING) === 0) {
+                    continue;
+                }
+                if (!PILL_TEXT_RE.test((el.textContent || '').trim())) {
+                    continue;
+                }
+                const label = el.getAttribute('aria-label');
+                if (!label) {
+                    continue;
+                }
+                const numbers = label.match(PILL_LABEL_DIGITS_RE);
+                if (!numbers || numbers.length < 2) {
+                    continue;
+                }
+                return true;
+            }
+            return false;
+        } catch (e) {
+            // Unreadable DOM -> treat as "no thread", i.e. insert nothing.
+            return false;
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Icon + link construction
     // ---------------------------------------------------------------------------
 
@@ -379,20 +505,45 @@
     }
 
     /**
-     * Process a single native bookmark button: insert our link immediately
-     * before it (joining the right-hand action group and inheriting its 8px gap),
-     * unless our link is already present.
+     * Locate OUR already-injected link for a given bookmark button, or null.
      *
-     * Idempotency / re-heal: React may re-render the action bar and DROP our
-     * injected sibling while keeping the bookmark button. So we never trust a
-     * marker alone -- we check whether our sibling actually still exists:
-     *   - PRIMARY O(1) check: previousElementSibling is our link (we always
-     *     insert immediately before the bookmark button). This keys off BTN_CLASS,
-     *     which is set on the <a>, so it recognizes our element fine.
-     *   - FALLBACK: a scoped query of the parent for our class (covers the rare
-     *     case where React reordered siblings).
-     * If our link is gone, we (re)insert it. This makes MARK_ATTR purely
-     * informational, never a correctness dependency.
+     * React may re-render the action bar and DROP our injected sibling while
+     * keeping the bookmark button, so we never trust MARK_ATTR alone -- we look for
+     * the element itself:
+     *   - PRIMARY O(1) check: previousElementSibling is our link (we always insert
+     *     immediately before the bookmark button). This keys off BTN_CLASS, which is
+     *     set on the <a>, so it recognizes our element fine.
+     *   - FALLBACK: a scoped query of the parent for our class (covers the rare case
+     *     where React reordered siblings).
+     * This makes MARK_ATTR purely informational, never a correctness dependency.
+     */
+    function findOurLink(bookmarkBtn) {
+        const prev = bookmarkBtn.previousElementSibling;
+        if (prev && prev.classList && prev.classList.contains(BTN_CLASS)) {
+            return prev;
+        }
+        const parent = bookmarkBtn.parentElement;
+        return parent ? parent.querySelector(':scope > .' + BTN_CLASS) : null;
+    }
+
+    /**
+     * Bring a single post's action bar in line with the one invariant this script
+     * maintains: OUR LINK IS PRESENT IF AND ONLY IF THE POST CARRIES A THREAD PILL.
+     * We insert immediately before the native Save button (joining the right-hand
+     * action group and inheriting its 8px gap), and remove a link whose post no
+     * longer has a pill.
+     *
+     * Gating on the pill is the point of this pass: a post with no "x/y" pill is not
+     * part of a thread, so unrolling it would just show the single post we are
+     * already looking at. Both directions are enforced on every scan, so a post that
+     * GAINS a pill (the author adds a self-reply while we are looking at it) gets the
+     * button, and one that LOSES it (a thread post is deleted) loses the button
+     * rather than keeping a link to nothing.
+     *
+     * The removal branch cannot loop: removing our link is a childList mutation that
+     * schedules one more scan, which then finds neither a link nor a pill and does
+     * nothing -- no mutation, no further scan. Self-limiting, exactly like the
+     * insertion path.
      */
     function processBookmarkButton(bookmarkBtn) {
         try {
@@ -400,17 +551,19 @@
                 return;
             }
 
-            // O(1) already-present check: our link is always the immediate
-            // previous sibling when present.
-            const prev = bookmarkBtn.previousElementSibling;
-            if (prev && prev.classList && prev.classList.contains(BTN_CLASS)) {
-                bookmarkBtn.setAttribute(MARK_ATTR, '1');
+            const existing = findOurLink(bookmarkBtn);
+
+            // Nothing to unroll -> make sure we are not offering to.
+            if (!hasThreadPill(bookmarkBtn)) {
+                if (existing) {
+                    existing.remove();
+                    bookmarkBtn.removeAttribute(MARK_ATTR);
+                }
                 return;
             }
 
-            // Fallback presence check (handles a sibling reorder).
-            const parent = bookmarkBtn.parentElement;
-            if (parent && parent.querySelector(':scope > .' + BTN_CLASS)) {
+            // Already present and still warranted -> leave it alone.
+            if (existing) {
                 bookmarkBtn.setAttribute(MARK_ATTR, '1');
                 return;
             }
@@ -503,9 +656,12 @@
      * IMPORTANT: we scan ALL [data-testid="postBookmarkBtn"] -- we do NOT filter
      * by the marker attribute. Filtering by ":not([data-bsky-unroller])" would
      * defeat re-heal: a button React kept (marked) but whose sibling React dropped
-     * would be skipped forever. processBookmarkButton() decides per-button via the
-     * sibling-presence check, so re-running over everything is correct and cheap
-     * (the present-button path is O(1) and inserts nothing).
+     * would be skipped forever. It would equally defeat the pill gate, which must be
+     * re-evaluated as posts change: a post can GAIN or LOSE its thread pill in place,
+     * and a cached verdict would freeze the wrong answer. processBookmarkButton()
+     * decides per-button on every pass, so re-running over everything is correct and
+     * cheap: measured 3.5ms for a fully-loaded 53-post profile feed, and scans are
+     * rAF-coalesced to at most one per frame.
      *
      * SELF-TRIGGER NOTE: our own bookmarkBtn.before(btn) is a childList mutation,
      * which re-fires the observer and schedules one more scan. That follow-up scan
